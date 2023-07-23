@@ -111,22 +111,7 @@ def parse_args():
         args.cfg_options = args.options
 
     return args
-
-def update_dict_keys(model_weights):
-    new_weights = {}
-    for key in model_weights.keys():
-        if key.startswith("img_backbone") or key.startswith("img_neck") or key.startswith("img_bev_encoder_backbone")\
-                or key.startswith("img_bev_encoder_neck") or key.startswith("pts_bbox_head") :
-            new_weights[key] = model_weights[key]
-    return new_weights
-
-def update_dict_keys2(model_weights):
-    new_weights = {}
-    for key in model_weights.keys():
-        if key.startswith("encoders.lidar.backbone") :
-            new_weights["pts_middle_encoder"] = model_weights[key]
-    return new_weights
-
+    
 def main():
     args = parse_args()
 
@@ -235,19 +220,6 @@ def main():
         train_cfg=cfg.get('train_cfg'),
         test_cfg=cfg.get('test_cfg'))
     model.init_weights()
-    # # # # # 加载预训练权重
-    # pretrained_img_weights = torch.load('/home/lk/BEVDet4D/pretrianed/fusion_pretrained/fusion_need/bevdet_single_512_1408.pth')['state_dict']
-    # pretrained_lidar_weights = torch.load('/home/lk/BEVDet4D/pretrianed/fusion_pretrained/fusion_need/cp075.pth')['state_dict']
-    # # pretrained_weights_new = update_dict_keys(pretrained_img_weights)
-    # model_dict = model.state_dict()
-    # # # 筛除不加载的层结构
-    # pretrained_dict1 = {k: v for k, v in pretrained_img_weights.items() if k in model_dict }
-    # # # # 更新当前网络的结构字典
-    # model_dict.update(pretrained_dict1)
-    # pretrained_dict2 = {k: v for k, v in pretrained_lidar_weights.items() if k in model_dict}
-    # # # # 更新当前网络的结构字典
-    # model_dict.update(pretrained_dict2)
-    # torch.save(model_dict, '/home/lk/BEVDet4D/pretrianed/fusion_pretrained/fusion_need/bevdet_singe_cp0075.pth')
 
     ###冻结指定的模块
     from torch import nn
@@ -267,7 +239,6 @@ def main():
     def fix_bn(m):
         if isinstance(m, nn.BatchNorm1d) or isinstance(m, nn.BatchNorm2d):
             m.track_running_stats = False
-
     model.pts_voxel_layer.apply(fix_bn)
     model.pts_voxel_encoder.apply(fix_bn)
     model.pts_middle_encoder.apply(fix_bn)
@@ -276,8 +247,6 @@ def main():
     for name, param in model.named_parameters():
         if 'img_backbone' in name or 'img_neck' in name or 'img_view_transformer' in name or  'pre_process' in name \
             or 'img_bev_encoder_backbone' in name or 'img_bev_encoder_neck' in name:
-            #   or 'pts_middle_encoder' in name or 'pts_backbone' in name or 'pts_neck' in name or 'pts_voxel_layer' in name\
-            # or 'pts_voxel_encoder' in name:
             param.requires_grad = False
 
     logger.info(f'Model:\n{model}')
